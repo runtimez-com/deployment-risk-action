@@ -1,0 +1,89 @@
+name: "Deployment Risk Gate"
+description: "Kubernetes deployment-risk gate — pre-apply: scores rendered manifests and blocks risky PRs; post-deploy: waits for Argo CD to deploy a commit and fails the job if the deploy did not land well."
+branding:
+  icon: "shield"
+  color: "red"
+inputs:
+  mode:
+    description: "pre-apply (score rendered manifests on a PR) | post-deploy (poll runtimez until Argo CD has deployed `revision` to `argocd-app` and judge it)."
+    required: false
+    default: "pre-apply"
+  manifests:
+    description: "pre-apply: path to a rendered Kubernetes YAML file or a directory of them (already rendered — render Helm/Kustomize in a prior step). Required in pre-apply mode."
+    required: false
+    default: ""
+  baseline-manifests:
+    description: "Path to the base-branch rendered manifest for diff mode. When provided, Phase-2 diff rules (Cat 12/27/29/30/13) are activated alongside Phase-1 single-manifest rules."
+    required: false
+    default: ""
+  changed-files:
+    description: "Newline-separated list of files changed in the PR (from git diff --name-only). Used for Cat 13 git-intelligence finding (#14)."
+    required: false
+    default: ""
+  fail-on:
+    description: "Minimum risk level that fails the check: LOW | MEDIUM | HIGH | CRITICAL."
+    required: false
+    default: "HIGH"
+  github-token:
+    description: "Token used to post the sticky PR comment."
+    required: false
+    default: ${{ github.token }}
+  runtimez-url:
+    description: "Base URL of the runtimez API (pre-apply: enables the add-on rules' cluster-target checks; post-deploy: required), e.g. https://app.runtimez.io (https required except for localhost)."
+    required: false
+    default: ""
+  api-key:
+    description: "A runtimez API key (rk_…) with the api:read scope whose creator can read the cluster. Pass it from a secret."
+    required: false
+    default: ""
+  org-id:
+    description: "The runtimez organisation id (pre-apply: optional cluster context; post-deploy: required)."
+    required: false
+    default: ""
+  cluster-id:
+    description: "The runtimez cluster id (pre-apply: the cluster the PR deploys to; post-deploy: the cluster the Argo CD Application runs in)."
+    required: false
+    default: ""
+  argocd-app:
+    description: "post-deploy: the Argo CD Application as <namespace>/<name>, e.g. argocd/web."
+    required: false
+    default: ""
+  revision:
+    description: "post-deploy: the Git commit to wait for (7-64 hex characters). Defaults to the commit that triggered the workflow."
+    required: false
+    default: ${{ github.sha }}
+  timeout:
+    description: "post-deploy: seconds to wait for a final verdict before giving up (counts as INCONCLUSIVE)."
+    required: false
+    default: "900"
+  gate-mode:
+    description: "post-deploy: fast (Argo CD reports Synced + Healthy after the sync) | full (also wait for release verification's verdict on every rollout)."
+    required: false
+    default: "fast"
+  fail-on-inconclusive:
+    description: "post-deploy: true fails the job when runtimez cannot judge the deploy (INCONCLUSIVE or timeout); false only warns."
+    required: false
+    default: "false"
+outputs:
+  verdict:
+    description: "post-deploy: PASS | FAIL | INCONCLUSIVE | TIMEOUT."
+runs:
+  using: "docker"
+  # Prebuilt, public image — pinned to an exact version; this tag of the action always runs the same gate.
+  image: "docker://ghcr.io/runtimez-com/deployment-risk-action:1.0.0"
+  env:
+    INPUT_MODE: ${{ inputs.mode }}
+    INPUT_MANIFESTS: ${{ inputs.manifests }}
+    INPUT_BASELINE_MANIFESTS: ${{ inputs.baseline-manifests }}
+    INPUT_CHANGED_FILES: ${{ inputs.changed-files }}
+    INPUT_FAIL_ON: ${{ inputs.fail-on }}
+    INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
+    INPUT_RUNTIMEZ_URL: ${{ inputs.runtimez-url }}
+    INPUT_API_KEY: ${{ inputs.api-key }}
+    INPUT_ORG_ID: ${{ inputs.org-id }}
+    INPUT_CLUSTER_ID: ${{ inputs.cluster-id }}
+    INPUT_ARGOCD_APP: ${{ inputs.argocd-app }}
+    INPUT_REVISION: ${{ inputs.revision }}
+    INPUT_TIMEOUT: ${{ inputs.timeout }}
+    INPUT_GATE_MODE: ${{ inputs.gate-mode }}
+    INPUT_FAIL_ON_INCONCLUSIVE: ${{ inputs.fail-on-inconclusive }}

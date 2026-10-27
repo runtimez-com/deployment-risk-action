@@ -1,0 +1,26 @@
+# After a merge, wait for Argo CD to deploy the commit and fail the job if the deploy did not land well.
+name: post-deploy-gate
+on:
+  push:
+    branches: [main]
+    paths: ["k8s/**"]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - id: gate
+        uses: runtimez-com/deployment-risk-action@v1
+        with:
+          mode: post-deploy
+          runtimez-url: ${{ secrets.RUNTIMEZ_URL }}
+          api-key: ${{ secrets.RUNTIMEZ_API_KEY }}
+          org-id: ${{ secrets.RUNTIMEZ_ORG_ID }}
+          cluster-id: ${{ secrets.RUNTIMEZ_CLUSTER_ID }}
+          argocd-app: argocd/web          # <namespace>/<name> of the Argo CD Application
+          revision: ${{ github.sha }}
+          timeout: "900"
+          gate-mode: fast                 # full = also wait for release verification on every rollout
+          fail-on-inconclusive: "false"
+      - run: echo "verdict=${{ steps.gate.outputs.verdict }}"

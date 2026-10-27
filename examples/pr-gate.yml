@@ -1,0 +1,44 @@
+# Score every pull request's Kubernetes manifests against the base branch, and block risky ones.
+name: deployment-risk
+on: pull_request
+permissions:
+  contents: read
+  pull-requests: write   # the sticky PR comment
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Checkout base
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.base_ref }}
+          path: base-src
+
+      # The gate reads RENDERED manifests. Plain YAML in k8s/ needs no step here; for Helm or
+      # Kustomize, render both sides first, e.g.
+      #   helm template web ./chart -f values-prod.yaml > rendered/head.yaml
+      #   helm template web base-src/chart -f base-src/values-prod.yaml > rendered/base.yaml
+
+      - name: Changed files
+        id: diff
+        run: |
+          {
+            echo 'files<<__CHANGED__'
+            git diff --name-only "origin/${{ github.base_ref }}...HEAD"
+            echo '__CHANGED__'
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: runtimez-com/deployment-risk-action@v1
+        with:
+          manifests: k8s
+          baseline-manifests: base-src/k8s
+          changed-files: ${{ steps.diff.outputs.files }}
+          fail-on: HIGH
+          # Optional — adds the cluster-aware checks (capacity fit, add-on versions on the target cluster).
+          # Keep all four in secrets: a public repo's run log prints a step's inputs.
+          runtimez-url: ${{ secrets.RUNTIMEZ_URL }}
+          api-key: ${{ secrets.RUNTIMEZ_API_KEY }}
+          org-id: ${{ secrets.RUNTIMEZ_ORG_ID }}
+          cluster-id: ${{ secrets.RUNTIMEZ_CLUSTER_ID }}
