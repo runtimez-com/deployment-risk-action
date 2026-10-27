@@ -30,6 +30,10 @@ the target cluster, does the change clash with the add-on versions running there
    [`examples/post-deploy-gate.yml`](examples/post-deploy-gate.yml) into `.github/workflows/`, and point `manifests`,
    `baseline-manifests` and `argocd-app` at your own paths and Application.
 
+Every PR comment ends with one line saying whether the cluster-aware checks ran: *on*, *off* (and which input is
+missing or empty), or how many runtimez lookups failed and why. A missing or rejected key never fails the check, but
+it is never silent either — the line and a warning annotation say so.
+
 The gate reads **rendered** manifests. For Helm or Kustomize, render the head and base sides in a step before it
 (see the comment in `examples/pr-gate.yml`).
 

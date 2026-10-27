@@ -70,7 +70,7 @@ outputs:
 runs:
   using: "docker"
   # Prebuilt, public image — pinned to an exact version; this tag of the action always runs the same gate.
-  image: "docker://ghcr.io/runtimez-com/deployment-risk-action:1.0.0"
+  image: "docker://ghcr.io/runtimez-com/deployment-risk-action:1.0.1"
   env:
     INPUT_MODE: ${{ inputs.mode }}
     INPUT_MANIFESTS: ${{ inputs.manifests }}
