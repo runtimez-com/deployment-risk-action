@@ -34,6 +34,11 @@ Every PR comment ends with one line saying whether the cluster-aware checks ran:
 missing or empty), or how many runtimez lookups failed and why. A missing or rejected key never fails the check, but
 it is never silent either — the line and a warning annotation say so.
 
+With the cluster inputs set, the PR gate records its prediction for the PR's head commit, and the post-deploy gate
+links it to the commit Argo CD deploys (a merge or squash commit), so runtimez can score each prediction against what
+the rollout really did. Recording and linking need the key's creator to have write access to the cluster; when either
+fails the gate carries on unchanged.
+
 The gate reads **rendered** manifests. For Helm or Kustomize, render the head and base sides in a step before it
 (see the comment in `examples/pr-gate.yml`).
 
@@ -46,7 +51,7 @@ The gate reads **rendered** manifests. For Helm or Kustomize, render the head an
 | `baseline-manifests` | pre-apply | | the base branch's rendered manifests — turns on the diff checks |
 | `changed-files` | pre-apply | | newline-separated `git diff --name-only` output |
 | `fail-on` | pre-apply | `HIGH` | `LOW` · `MEDIUM` · `HIGH` · `CRITICAL` |
-| `github-token` | pre-apply | `github.token` | posts the PR comment (needs `pull-requests: write`) |
+| `github-token` | both | `github.token` | pre-apply: posts the PR comment (needs `pull-requests: write`); post-deploy: finds the PR a commit came from (needs `pull-requests: read`) |
 | `runtimez-url` | both | | `https://` (or `http://localhost`); required for post-deploy |
 | `api-key` | both | | `rk_…` key with `api:read`; required for post-deploy |
 | `org-id` | both | | required for post-deploy |
